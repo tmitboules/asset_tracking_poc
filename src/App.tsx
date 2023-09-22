@@ -1,5 +1,10 @@
 import "./App.css";
-import { GoogleMap, DirectionsRenderer } from "@react-google-maps/api";
+import {
+  GoogleMap,
+  DirectionsRenderer,
+  PolylineF,
+  MarkerF,
+} from "@react-google-maps/api";
 import useMap from "./hooks/useMap";
 import { CONTAINER_STYLE, MAP_STARTING_CENTER } from "./utils/constants";
 
@@ -12,6 +17,10 @@ function App() {
     destinationRef,
     getDirections,
     directions,
+    snapToRoads,
+    snappedCoordinates,
+    snappedPoints,
+    setSnappedPoints,
   } = useMap();
 
   return (
@@ -30,18 +39,44 @@ function App() {
               placeholder="End Point"
             />
             <button onClick={getDirections}>Get Directions</button>
+            <button onClick={snapToRoads}>Snap To Roads</button>
           </div>
           <div className="map_container">
             <GoogleMap
               center={MAP_STARTING_CENTER}
               onUnmount={onUnmount}
               onLoad={onLoad}
+              zoom={15}
               mapContainerStyle={CONTAINER_STYLE}
               onClick={(e) => {
-                console.log(e);
+                console.log(e.latLng?.toUrlValue());
+                if (e.latLng) {
+                  console.log(snappedPoints);
+                  snappedPoints.push(e.latLng?.toUrlValue());
+                  console.log(snappedPoints);
+                  setSnappedPoints(snappedPoints);
+                  setTimeout(() => {
+                    snapToRoads();
+                  }, 0);
+                }
               }}
             >
               {directions && <DirectionsRenderer directions={directions} />}
+              {snappedCoordinates && (
+                <PolylineF
+                  path={snappedCoordinates}
+                  options={{
+                    strokeColor: "#FF0000",
+                    strokeOpacity: 1,
+                    strokeWeight: 3,
+                  }}
+                />
+              )}
+              {/* <>
+                {Object.values(snappedCoordinates).map((loc, index) => (
+                  <MarkerF markerStyle key={index} position={loc} />
+                ))}
+              </> */}
             </GoogleMap>
           </div>
         </div>
