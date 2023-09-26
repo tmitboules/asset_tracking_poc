@@ -1,5 +1,12 @@
 import "./App.css";
-import { GoogleMap, DirectionsRenderer, MarkerF } from "@react-google-maps/api";
+
+import {
+  CircleF,
+  DirectionsRenderer,
+  GoogleMap,
+  MarkerF,
+  PolylineF,
+} from "@react-google-maps/api";
 import useMap from "./hooks/useMap";
 import { CONTAINER_STYLE, MAP_STARTING_CENTER } from "./utils/constants";
 
@@ -13,20 +20,27 @@ function App() {
     origin,
     destination,
     getDirections,
+    snappedCoordinates,
     directions,
     distance,
     duration,
     rotation,
+    zoom,
   } = useMap();
 
   const directionsOptions = {
     suppressMarkers: true,
     polylineOptions: {
-      strokeColor: "red",
+      strokeColor: "#FF6C3E",
       strokeWeight: 6,
     },
   };
-
+  // const markerIcon = {
+  //   url: "../src/assets/Navigation.svg",
+  //   scaledSize: new google.maps.Size(32, 32),
+  //   anchor: new google.maps.Point(16, 16),
+  //   rotation: rotation,
+  // };
   return (
     <>
       {isLoaded ? (
@@ -50,52 +64,48 @@ function App() {
           </div>
           <div className="map_container">
             <GoogleMap
-              center={MAP_STARTING_CENTER}
+              center={origin ?? MAP_STARTING_CENTER}
               onUnmount={onUnmount}
               onLoad={onLoad}
-              zoom={15}
+              zoom={zoom}
               mapContainerStyle={CONTAINER_STYLE}
-              onClick={(e) => {
-                console.log(e.latLng?.toUrlValue());
-                // if (e.latLng) {
-                //   snappedPoints.push(e.latLng?.toUrlValue());
-                //   setSnappedPoints(snappedPoints);
-                // }
-              }}
             >
               {origin && (
-                <MarkerF
-                  icon={{
-                    url: "../src/assets/Navigation.svg",
-                    scaledSize: new google.maps.Size(32, 32),
-                    anchor: new google.maps.Point(16, 16),
-                    rotation: rotation,
-                  }}
-                  position={origin}
-                />
+                <>
+                  <MarkerF
+                    icon={{
+                      url: "../src/assets/Navigation.svg",
+                      scaledSize: new google.maps.Size(32, 32),
+                      anchor: new google.maps.Point(16, 16),
+                      rotation: rotation,
+                    }}
+                    position={origin}
+                  />
+                </>
               )}
-              {destination && <MarkerF position={destination} />}
+
+              {destination && (
+                <>
+                  <MarkerF position={destination} />
+                </>
+              )}
               {directions && (
                 <DirectionsRenderer
                   options={directionsOptions}
                   directions={directions}
                 />
               )}
-              {/* {snappedCoordinates && (
+              {snappedCoordinates && (
                 <PolylineF
                   path={snappedCoordinates}
                   options={{
-                    strokeColor: "#FF0000",
+                    strokeColor: "grey",
                     strokeOpacity: 1,
-                    strokeWeight: 3,
+                    strokeWeight: 7,
+                    zIndex: 1000,
                   }}
                 />
-              )} */}
-              {/* <>
-                {Object.values(snappedCoordinates).map((loc, index) => (
-                  <MarkerF markerStyle key={index} position={loc} />
-                ))}
-              </> */}
+              )}
             </GoogleMap>
           </div>
         </div>

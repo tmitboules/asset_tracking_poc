@@ -1,44 +1,72 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useLayoutEffect, useMemo } from "react";
 import { useJsApiLoader, Libraries } from "@react-google-maps/api";
 import { MAP_STARTING_CENTER } from "../utils/constants";
 
 const LIBRARIES: Libraries | undefined = ["places"];
 
 export default function useMap() {
-  const originRef = React.useRef<HTMLInputElement>(null);
-  const destinationRef = React.useRef<HTMLInputElement>(null);
-
-  const [directions, setDirections] =
-    React.useState<google.maps.DirectionsResult>();
-  const [snappedPoints, setSnappedPoints] = React.useState<any[]>([]);
-  const [snappedCoordinates, setSnappedCoordinates] = React.useState<any[]>([]);
-  const [distance, setDistance] = React.useState("");
-  const [duration, setDuration] = React.useState("");
-  const [origin, setOrigin] = React.useState<
-    google.maps.LatLng | google.maps.LatLngLiteral
-  >();
-  const [count, setCount] = React.useState<number>(0);
-  const [destination, setDestination] = React.useState<any>(null);
-  const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
   const { isLoaded } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_KEY,
     libraries: LIBRARIES,
   });
+
   const [map, setMap] = React.useState<google.maps.Map | null>(null);
 
-  const [rotation, setRotation] = React.useState(0);
   const onLoad = React.useCallback(function callback(map: google.maps.Map) {
     // This is just an example of getting and using the map instance!!! don't just blindly copy!
     const bounds = new window.google.maps.LatLngBounds(MAP_STARTING_CENTER);
     map.fitBounds(bounds);
-
     setMap(map);
   }, []);
 
   const onUnmount = React.useCallback(function callback() {
     setMap(null);
   }, []);
+  const [zoom, setZoom] = React.useState<number>(15);
+  const originRef = React.useRef<HTMLInputElement>(null);
+  const destinationRef = React.useRef<HTMLInputElement>(null);
+
+  const [directions, setDirections] =
+    React.useState<google.maps.DirectionsResult>();
+
+  const [origin, setOrigin] = React.useState<any>();
+  const [destination, setDestination] = React.useState<any>(null);
+
+  const [distance, setDistance] = React.useState("");
+  const [duration, setDuration] = React.useState("");
+
+  const [count, setCount] = React.useState<number>(0);
+
+  const [rotation, setRotation] = React.useState(90);
+
+  const [snappedPoints, setSnappedPoints] = React.useState<any[]>([
+    "33.778119,-117.846784",
+    "33.777807,-117.846766",
+    "33.777807,-117.846766",
+    "33.777774,-117.844449",
+    "33.777774,-117.844449",
+    "33.773305,-117.844445",
+    "33.773305,-117.844445",
+    "33.773312,-117.852937",
+    "33.773312,-117.852937",
+    "33.774997,-117.853139",
+    "33.774997,-117.853139",
+    "33.776469,-117.836496",
+    "33.776469,-117.836496",
+    "33.84246,-117.830153",
+    "33.84246,-117.830153",
+    "33.844391,-117.824889",
+    "33.844391,-117.824889",
+    "33.8764,-117.660117",
+    "33.8764,-117.660117",
+    "33.878108,-117.656993",
+    "33.878108,-117.656993",
+    "33.875662,-117.635074",
+    "33.875662,-117.635074",
+    "33.871735,-117.634046",
+  ]);
+  const [snappedCoordinates, setSnappedCoordinates] = React.useState<any[]>([]);
 
   async function getDirections() {
     if (!originRef.current || !destinationRef.current) return;
@@ -49,6 +77,7 @@ export default function useMap() {
       destination: destinationRef.current.value,
       travelMode: google.maps.TravelMode.DRIVING,
     });
+    setDistanceAndDuration(results);
     setOrigin({
       lat: results.routes[0].legs[0].start_location.lat(),
       lng: results.routes[0].legs[0].start_location.lng(),
@@ -57,34 +86,32 @@ export default function useMap() {
       lat: results.routes[0].legs[0].end_location.lat(),
       lng: results.routes[0].legs[0].end_location.lng(),
     });
-    setDistanceAndDuration(results);
-
-    var pathValues = [];
-    for (var i = 0; i < results.routes.length; i++) {
-      for (var j = 0; j < results.routes[i].legs[0].steps.length; j++) {
-        pathValues.push(
-          results.routes[i].legs[0].steps[j].start_location.toUrlValue()
-        );
-        pathValues.push(
-          results.routes[i].legs[0].steps[j].end_location.toUrlValue()
-        );
-      }
-    }
-    setSnappedPoints(pathValues);
+    setDirections(results);
   }
 
-  const interval = setInterval(async () => {
-    if (snappedPoints.length > 0 && snappedPoints[count]) {
-      await getUpdateDirections(snappedPoints[count]);
-    }
-    clearInterval(interval);
-  }, 10000);
-
-  useMemo(() => {
+  useEffect(() => {
     if (count < snappedPoints.length) {
-      interval;
+      setTimeout(() => {
+        liveLocationChange();
+      }, 10000);
+      if (count % 3 === 0) {
+        setTimeout(() => {
+          if (snappedPoints.length > 0 && snappedPoints[count]) {
+            getUpdateDirections(snappedPoints[count]);
+          }
+        }, 30000);
+      }
     }
   }, [count]);
+
+  function liveLocationChange() {
+    if (snappedPoints.length > 0 && snappedPoints[count]) {
+      updateMarker(snappedPoints[count]);
+    }
+    if (count < snappedPoints.length) {
+      setCount((prev) => prev + 1);
+    }
+  }
 
   async function getUpdateDirections(newLocationRef: any) {
     if (!destinationRef.current) return;
@@ -94,16 +121,70 @@ export default function useMap() {
       destination: destinationRef.current.value,
       travelMode: google.maps.TravelMode.DRIVING,
     });
+    console.log("getUpdateDirections");
     setDistanceAndDuration(results);
     setDirections(results);
-    if (count < snappedPoints.length) setCount(count + 1);
-    setTimeout(() => {
-      updateMarkerPosition({
-        lat: Number(snappedPoints[count].split(",")[0]),
-        lng: Number(snappedPoints[count].split(",")[1]),
-      });
+    map?.setCenter(results.routes[0].bounds.getCenter());
+
+    setSnappedCoordinates([]);
+  }
+
+  function updateMarker(newLocationRef: any) {
+    updateMarkerPosition({
+      lat: Number(newLocationRef.split(",")[0]),
+      lng: Number(newLocationRef.split(",")[1]),
     });
   }
+
+  const updateMarkerPosition = (newCoordinates: any) => {
+    console.log("updateMarkerPosition");
+
+    const cor = snappedCoordinates.concat(newCoordinates);
+    setSnappedCoordinates(cor);
+
+    const newRotation = calculateRotationAngle(newCoordinates);
+    setOrigin(newCoordinates);
+    setRotation(newRotation);
+    computeCurrentDistance(newCoordinates);
+    setZoom(18);
+  };
+
+  const calculateRotationAngle = (newCoordinates: any) => {
+    if (origin) {
+      const prevLat = Number(origin?.lat);
+      const prevLng = Number(origin?.lng);
+      const { lat: newLat, lng: newLng } = newCoordinates;
+
+      const deltaY = newLat - prevLat;
+      const deltaX = newLng - prevLng;
+      const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+      console.log({ angle });
+      return angle;
+    }
+    return 0;
+  };
+
+  const computeCurrentDistance = (newCoordinates: any) => {
+    if (!destination) return;
+    const currentDistance =
+      google.maps.geometry.spherical.computeDistanceBetween(
+        destination,
+        newCoordinates,
+        6371
+      );
+    if (currentDistance < 1 && destination != newCoordinates) {
+      setTimeout(() => {
+        atLocation();
+      }, 10);
+    }
+    return currentDistance;
+  };
+
+  const atLocation = () => {
+    setSnappedCoordinates([]);
+    setCount(snappedPoints.length);
+    updateMarkerPosition(destination);
+  };
 
   async function setDistanceAndDuration(results: google.maps.DirectionsResult) {
     if (results.routes[0].legs[0] && results.routes[0].legs[0].distance) {
@@ -116,43 +197,6 @@ export default function useMap() {
     } else {
       setDuration("");
     }
-  }
-
-  const updateMarkerPosition = (newCoordinates: any) => {
-    // Calculate rotation angle based on movement direction
-    const newRotation = calculateRotationAngle(newCoordinates);
-    console.log(newRotation);
-    setOrigin(newCoordinates);
-    setRotation(newRotation);
-  };
-
-  const calculateRotationAngle = (newCoordinates: any) => {
-    const prevLat = Number(origin?.lat);
-    const prevLng = Number(origin?.lng);
-    const { lat: newLat, lng: newLng } = newCoordinates;
-
-    const deltaY = newLat - prevLat;
-    const deltaX = newLng - prevLng;
-
-    const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
-
-    return angle;
-  };
-
-  async function snapToRoads() {
-    const response = await fetch(
-      `https://roads.googleapis.com/v1/snapToRoads?path=${encodeURIComponent(
-        snappedPoints.join("|")
-      )}&interpolate=true&key=${GOOGLE_MAPS_KEY}`
-    );
-
-    const data = await response.json();
-    // Extract the snapped points from the response
-    const snappedCoordinates = data.snappedPoints.map((point: any) => ({
-      lat: point.location.latitude,
-      lng: point.location.longitude,
-    }));
-    setSnappedCoordinates(snappedCoordinates);
   }
 
   return {
@@ -168,12 +212,13 @@ export default function useMap() {
     directions,
     snappedPoints,
     setSnappedPoints,
-    snapToRoads,
+    // snapToRoads,
     distance,
     duration,
     getUpdateDirections,
     snappedCoordinates,
     count,
+    zoom,
     setCount,
     rotation,
   };
