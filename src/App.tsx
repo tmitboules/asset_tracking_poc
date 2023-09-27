@@ -17,12 +17,6 @@ function App() {
     updateTruckLocation,
   } = useMap();
 
-  // const markerIcon = {
-  //   url: "../src/assets/Navigation.svg",
-  //   scaledSize: new google.maps.Size(32, 32),
-  //   anchor: new google.maps.Point(16, 16),
-  //   rotation: rotation,
-  // };
   return (
     <>
       {isLoaded ? (
@@ -41,8 +35,15 @@ function App() {
               placeholder="End Point"
             />
             <button onClick={getDirections}>Get Directions</button>
-            {/* <label style={{ color: "white" }}>Distance : {distance}</label>
-            <label style={{ color: "white" }}> Duration : {duration}</label> */}
+            <label style={{ color: "white" }}>
+              Current Distance : {mapState.remainingDistance}
+            </label>
+            <label style={{ color: "white" }}>
+              Distance : {mapState.distance}
+            </label>
+            <label style={{ color: "white" }}>
+              Duration : {mapState.duration}
+            </label>
           </div>
           <div className="map_container">
             <GoogleMap
@@ -52,22 +53,55 @@ function App() {
               mapContainerStyle={CONTAINER_STYLE}
               onClick={updateTruckLocation}
             >
-              {mapState.origin && (
+              {(mapState.origin || mapState.currentOriginAngle) && (
                 <>
                   <MarkerF
                     icon={{
-                      url: "../src/assets/Navigation.svg",
-                      scaledSize: new google.maps.Size(32, 32),
+                      // url: "../src/assets/Navigation.svg",
+                      path: "M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z",
                       anchor: new google.maps.Point(16, 16),
-                      rotation: 90,
+                      rotation: mapState.currentOriginAngle ?? 0,
+                      scaledSize: new google.maps.Size(32, 32),
+                      fillColor: "#FF6C3E",
+                      fillOpacity: 1,
+                      strokeColor: "#FF6C3E",
                     }}
-                    position={mapState.origin}
+                    position={mapState.origin ?? MAP_STARTING_CENTER}
                   />
+                  {/* <CircleF
+                    center={mapState.origin}
+                    radius={1}
+                    options={{
+                      strokeColor: "#FF6C3E",
+                      strokeOpacity: 1,
+                      strokeWeight: 5,
+                      fillColor: "#F9F9F9",
+                      fillOpacity: 1,
+                    }}
+                  /> */}
                 </>
               )}
               {mapState.destination && (
                 <>
-                  <MarkerF position={mapState.destination} />
+                  <MarkerF
+                    icon={{
+                      url: "../src/assets/LocationOn.svg",
+                      scaledSize: new google.maps.Size(32, 32),
+                      anchor: new google.maps.Point(16, 16),
+                    }}
+                    position={mapState.destination}
+                  />
+                  {/* <CircleF
+                    center={mapState.destination}
+                    radius={15} // Example circle radius in meters
+                    options={{
+                      strokeColor: "#FF6C3E",
+                      strokeOpacity: 0.1,
+                      strokeWeight: 5,
+                      fillColor: "#F9F9F9",
+                      fillOpacity: 1,
+                    }}
+                  /> */}
                 </>
               )}
 

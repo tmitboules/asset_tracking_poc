@@ -21,6 +21,12 @@ type IMapReducerActions =
       type: "update_truck_location_off_route";
       coordinates: google.maps.LatLng;
       directionsResult: google.maps.DirectionsResult;
+    }
+  | { type: "update_current_angle"; angle: number }
+  | { type: "update_remaining_distance"; remainingDistance: number }
+  | {
+      type: "update_directions_metadata";
+      directionsResult: google.maps.DirectionsResult;
     };
 
 type IMapReducerState = {
@@ -32,6 +38,10 @@ type IMapReducerState = {
   truckPosition?: google.maps.LatLngLiteral;
   origin?: google.maps.LatLngLiteral | google.maps.LatLng;
   trailingPolyline?: google.maps.LatLng[];
+  remainingDistance?: number;
+  currentOriginAngle?: number;
+  duration?: string;
+  distance?: string;
 };
 
 const reducer = (state: IMapReducerState, action: IMapReducerActions) => {
@@ -75,6 +85,16 @@ const reducer = (state: IMapReducerState, action: IMapReducerActions) => {
           lat: action.directionsResult.routes[0].legs[0].end_location.lat(),
           lng: action.directionsResult.routes[0].legs[0].end_location.lng(),
         },
+        duration:
+          action.directionsResult.routes[0].legs[0] &&
+          action.directionsResult.routes[0].legs[0].duration
+            ? action.directionsResult.routes[0].legs[0].duration.text
+            : 0,
+        distance:
+          action.directionsResult.routes[0].legs[0] &&
+          action.directionsResult.routes[0].legs[0].distance
+            ? action.directionsResult.routes[0].legs[0].distance.text
+            : "",
       } as IMapReducerState;
     }
 
@@ -83,7 +103,10 @@ const reducer = (state: IMapReducerState, action: IMapReducerActions) => {
 
       return {
         ...state,
-        origin: action.coordinates,
+        origin: {
+          lat: action.coordinates.lat(),
+          lng: action.coordinates.lng(),
+        },
         trailingPolyline: generateTrailingPolyline(
           action.coordinates,
           state.directions?.routes[0].overview_path
@@ -97,14 +120,42 @@ const reducer = (state: IMapReducerState, action: IMapReducerActions) => {
 
       return {
         ...state,
-        origin: action.coordinates,
+        origin: {
+          lat: action.coordinates.lat(),
+          lng: action.coordinates.lng(),
+        },
         trailingPolyline: generateTrailingPolyline(
           action.coordinates,
           action.directionsResult.routes[0].overview_path
         ),
         directions: action.directionsResult,
       } as IMapReducerState;
-
+    case "update_current_angle":
+      return {
+        ...state,
+        currentOriginAngle: action.angle,
+      } as IMapReducerState;
+    case "update_remaining_distance":
+      return {
+        ...state,
+        remainingDistance: action.remainingDistance,
+      } as IMapReducerState;
+    case "update_directions_metadata": {
+      state.map?.fitBounds(action.directionsResult.routes[0].bounds);
+      return {
+        ...state,
+        duration:
+          action.directionsResult.routes[0].legs[0] &&
+          action.directionsResult.routes[0].legs[0].duration
+            ? action.directionsResult.routes[0].legs[0].duration.text
+            : 0,
+        distance:
+          action.directionsResult.routes[0].legs[0] &&
+          action.directionsResult.routes[0].legs[0].distance
+            ? action.directionsResult.routes[0].legs[0].distance.text
+            : "",
+      } as IMapReducerState;
+    }
     default:
       return state;
   }
@@ -128,7 +179,7 @@ export default function useMap() {
     map: null,
     directionsRenderer: null,
   });
-
+  var interval: number;
   //functions
   async function getDirections() {
     if (!originRef.current || !destinationRef.current) return;
@@ -142,6 +193,25 @@ export default function useMap() {
     });
 
     dispatch({ type: "initialize_directions", directionsResult: results });
+    interval = setInterval(() => {
+      console.log("interval");
+      updateDirectionsMetaData();
+    }, 10000);
+  }
+
+  async function updateDirectionsMetaData() {
+    console.log(mapState.origin);
+    if (!mapState.origin || !mapState.destination) return;
+    const directionsService = new google.maps.DirectionsService();
+
+    const results = await directionsService.route({
+      origin: mapState.origin,
+      destination: mapState.destination,
+      travelMode: google.maps.TravelMode.DRIVING,
+    });
+    console.log("updateDirectionsMetaData");
+    console.log({ results });
+    dispatch({ type: "update_directions_metadata", directionsResult: results });
   }
 
   async function updateTruckLocation(e: google.maps.MapMouseEvent) {
@@ -181,6 +251,56 @@ export default function useMap() {
         directionsResult: results,
       });
     }
+    if (!mapState.origin || !mapState.destination) return;
+    calculateRotationAngle(
+      { lat: e.latLng.lat(), lng: e.latLng.lng() },
+      mapState.origin
+    );
+    computeRemainingDistance(
+      { lat: e.latLng.lat(), lng: e.latLng.lng() },
+      mapState.destination
+    );
+  }
+
+  function computeRemainingDistance(newCoordinates: any, destination: any) {
+    console.log({ newCoordinates });
+    console.log({ destination });
+    const remainingDistance =
+      google.maps.geometry.spherical.computeDistanceBetween(
+        destination,
+        newCoordinates,
+        6371
+      );
+    console.log({ remainingDistance });
+    dispatch({
+      type: "update_remaining_distance",
+      remainingDistance: remainingDistance,
+    });
+    if (remainingDistance < 1) {
+      if (interval) clearInterval(interval);
+    }
+    return remainingDistance;
+  }
+
+  function calculateRotationAngle(newCoordinates: any, origin: any) {
+    console.log({ newCoordinates });
+    console.log({ origin });
+    if (origin) {
+      const prevLat = Number(origin?.lat);
+      const prevLng = Number(origin?.lng);
+      const { lat: newLat, lng: newLng } = newCoordinates;
+
+      const deltaY = newLat - prevLat;
+      const deltaX = newLng - prevLng;
+      const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+      console.log({ angle });
+      dispatch({
+        type: "update_current_angle",
+        angle: angle,
+      });
+      return angle;
+    }
+    return 0;
   }
 
   //callbacks
