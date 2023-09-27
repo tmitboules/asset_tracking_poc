@@ -56,8 +56,19 @@ const reducer = (state: IMapReducerState, action: IMapReducerActions) => {
           lng: action.directionsResult.routes[0].legs[0].end_location.lng(),
         },
       } as IMapReducerState;
-    case "update_truck_location":
+    case "update_truck_location": {
       if (!state.directions) return state;
+      const poly = new google.maps.Polyline({
+        path: state.directions.routes[0].overview_path,
+      });
+
+      console.log(
+        google.maps.geometry.poly.isLocationOnEdge(
+          action.coordinates,
+          poly,
+          0.0008
+        )
+      );
 
       return {
         ...state,
@@ -67,6 +78,7 @@ const reducer = (state: IMapReducerState, action: IMapReducerActions) => {
           state.directions?.routes[0].overview_path
         ),
       } as IMapReducerState;
+    }
     default:
       return state;
   }
