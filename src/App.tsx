@@ -2,8 +2,8 @@ import "./App.css";
 
 import { GoogleMap, MarkerF, PolylineF } from "@react-google-maps/api";
 
-import useMapTakeTwo from "./hooks/useMapTakeTwo";
 import { CONTAINER_STYLE, MAP_STARTING_CENTER } from "./utils/constants";
+import useMap from "./hooks/useMap";
 
 function App() {
   const {
@@ -15,7 +15,7 @@ function App() {
     getDirections,
     mapState,
     updateTruckLocation,
-  } = useMapTakeTwo();
+  } = useMap();
 
   // const markerIcon = {
   //   url: "../src/assets/Navigation.svg",
