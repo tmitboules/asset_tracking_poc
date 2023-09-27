@@ -1,18 +1,9 @@
 import "./App.css";
 
-import {
-  DirectionsRenderer,
-  GoogleMap,
-  MarkerF,
-  PolylineF,
-} from "@react-google-maps/api";
+import { GoogleMap, MarkerF, PolylineF } from "@react-google-maps/api";
 
 import useMapTakeTwo from "./hooks/useMapTakeTwo";
-import {
-  CONTAINER_STYLE,
-  DIRECTIONS_OPTIONS,
-  MAP_STARTING_CENTER,
-} from "./utils/constants";
+import { CONTAINER_STYLE, MAP_STARTING_CENTER } from "./utils/constants";
 
 function App() {
   const {
@@ -23,7 +14,7 @@ function App() {
     destinationRef,
     getDirections,
     mapState,
-    dispatch,
+    updateTruckLocation,
   } = useMapTakeTwo();
 
   // const markerIcon = {
@@ -59,14 +50,7 @@ function App() {
               onUnmount={onUnmount}
               onLoad={onLoad}
               mapContainerStyle={CONTAINER_STYLE}
-              onClick={(e) => {
-                if (e.latLng) {
-                  dispatch({
-                    type: "update_truck_location",
-                    coordinates: e.latLng,
-                  });
-                }
-              }}
+              onClick={updateTruckLocation}
             >
               {mapState.origin && (
                 <>
@@ -86,18 +70,7 @@ function App() {
                   <MarkerF position={mapState.destination} />
                 </>
               )}
-              {mapState.directions && (
-                <>
-                  <DirectionsRenderer
-                    options={DIRECTIONS_OPTIONS}
-                    directions={mapState.directions}
-                    onDirectionsChanged={() => {
-                      console.log("directions have changed");
-                    }}
-                  />
-                </>
-              )}
-              /*{" "}
+
               <>
                 {mapState.trailingPolyline && (
                   <PolylineF

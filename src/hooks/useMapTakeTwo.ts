@@ -1,6 +1,6 @@
 import React from "react";
 import { useJsApiLoader, Libraries } from "@react-google-maps/api";
-import { MAP_STARTING_CENTER } from "../utils/constants";
+import { DIRECTIONS_OPTIONS, MAP_STARTING_CENTER } from "../utils/constants";
 import { generateTrailingPolyline } from "../utils";
 
 const LIBRARIES: Libraries | undefined = ["places"];
@@ -13,10 +13,19 @@ type IMapReducerActions =
   | { type: "update_directions" }
   | { type: "init_map"; map: google.maps.Map }
   | { type: "clear_map" }
-  | { type: "update_truck_location"; coordinates: google.maps.LatLng };
+  | {
+      type: "update_truck_location_along_route";
+      coordinates: google.maps.LatLng;
+    }
+  | {
+      type: "update_truck_location_off_route";
+      coordinates: google.maps.LatLng;
+      directionsResult: google.maps.DirectionsResult;
+    };
 
 type IMapReducerState = {
   map: google.maps.Map | null;
+  directionsRenderer: google.maps.DirectionsRenderer | null;
   count: number;
   directions?: google.maps.DirectionsResult;
   destination?: google.maps.LatLngLiteral;
@@ -31,19 +40,30 @@ const reducer = (state: IMapReducerState, action: IMapReducerActions) => {
       return {
         ...state,
         map: action.map,
-      };
+        directionsRenderer: new google.maps.DirectionsRenderer(
+          DIRECTIONS_OPTIONS
+        ),
+      } as IMapReducerState;
+
     case "clear_map":
       return {
         ...state,
         map: null,
       };
+
     case "update_directions":
       return {
         ...state,
         count: state.count + 1,
         origin: state.directions!.routes[0].overview_path[state.count + 1],
       } as IMapReducerState;
-    case "initialize_directions":
+
+    case "initialize_directions": {
+      state.directionsRenderer?.setDirections(action.directionsResult);
+      state.directionsRenderer?.setMap(state.map);
+
+      state.map?.fitBounds(action.directionsResult.routes[0].bounds);
+
       return {
         ...state,
         directions: action.directionsResult,
@@ -56,19 +76,10 @@ const reducer = (state: IMapReducerState, action: IMapReducerActions) => {
           lng: action.directionsResult.routes[0].legs[0].end_location.lng(),
         },
       } as IMapReducerState;
-    case "update_truck_location": {
-      if (!state.directions) return state;
-      const poly = new google.maps.Polyline({
-        path: state.directions.routes[0].overview_path,
-      });
+    }
 
-      console.log(
-        google.maps.geometry.poly.isLocationOnEdge(
-          action.coordinates,
-          poly,
-          0.0008
-        )
-      );
+    case "update_truck_location_along_route":
+      if (!state.directions) return state;
 
       return {
         ...state,
@@ -78,7 +89,21 @@ const reducer = (state: IMapReducerState, action: IMapReducerActions) => {
           state.directions?.routes[0].overview_path
         ),
       } as IMapReducerState;
-    }
+
+    case "update_truck_location_off_route":
+      if (!state.directions) return state;
+      state.directionsRenderer?.setDirections(action.directionsResult);
+      state.directionsRenderer?.setMap(state.map);
+
+      return {
+        ...state,
+        origin: action.coordinates,
+        trailingPolyline: generateTrailingPolyline(
+          action.coordinates,
+          action.directionsResult.routes[0].overview_path
+        ),
+        directions: action.directionsResult,
+      } as IMapReducerState;
     default:
       return state;
   }
@@ -100,6 +125,7 @@ export default function useMapTakeTwo() {
   const [mapState, dispatch] = React.useReducer(reducer, {
     count: 0,
     map: null,
+    directionsRenderer: null,
   });
 
   //functions
@@ -107,35 +133,54 @@ export default function useMapTakeTwo() {
     if (!originRef.current || !destinationRef.current) return;
 
     const directionsService = new google.maps.DirectionsService();
+
     const results = await directionsService.route({
       origin: originRef.current.value,
       destination: destinationRef.current.value,
       travelMode: google.maps.TravelMode.DRIVING,
     });
 
-    // const path = results.routes[0].overview_path.map((r) => ({
-    //   lat: r.lat(),
-    //   lng: r.lng(),
-    // }));
-
     dispatch({ type: "initialize_directions", directionsResult: results });
-
-    setInterval(() => {
-      // dispatch({ type: "update_directions" });
-    }, 1000);
   }
 
-  // async function updateDirections(){
-  //   if (!destinationRef.current) return;
-  //   const directionsService = new google.maps.DirectionsService();
-  //   const results = await directionsService.route({
-  //     origin: truckLocation,
-  //     destination: destinationRef.current.value,
-  //     travelMode: google.maps.TravelMode.DRIVING,
-  //   });
+  async function updateTruckLocation(e: google.maps.MapMouseEvent) {
+    if (!mapState.directions || !e.latLng) return;
 
-  //   setDirections(results)
-  // }
+    const poly = new google.maps.Polyline({
+      path: mapState.directions.routes[0].overview_path,
+    });
+
+    const isOnRoute = google.maps.geometry.poly.isLocationOnEdge(
+      e.latLng,
+      poly,
+      0.0008
+    );
+
+    if (isOnRoute) {
+      dispatch({
+        type: "update_truck_location_along_route",
+        coordinates: e.latLng,
+      });
+    }
+
+    if (!isOnRoute) {
+      if (!originRef.current || !destinationRef.current) return;
+
+      const directionsService = new google.maps.DirectionsService();
+      const results = await directionsService.route({
+        origin: originRef.current.value,
+        destination: destinationRef.current.value,
+        travelMode: google.maps.TravelMode.DRIVING,
+        waypoints: [{ location: e.latLng }],
+      });
+
+      dispatch({
+        type: "update_truck_location_off_route",
+        coordinates: e.latLng,
+        directionsResult: results,
+      });
+    }
+  }
 
   //callbacks
   const onLoad = React.useCallback(function callback(map: google.maps.Map) {
@@ -156,7 +201,7 @@ export default function useMapTakeTwo() {
     destinationRef,
     getDirections,
     mapState,
-    dispatch,
+    updateTruckLocation,
   } as const;
 }
 

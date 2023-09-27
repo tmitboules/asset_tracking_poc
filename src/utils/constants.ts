@@ -36,8 +36,9 @@ export const TRAVEL_COORDS = [
   "33.871735,-117.634046",
 ];
 
-export const DIRECTIONS_OPTIONS = {
+export const DIRECTIONS_OPTIONS: google.maps.DirectionsRendererOptions = {
   suppressMarkers: true,
+  preserveViewport: true,
   polylineOptions: {
     strokeColor: "#FAC898",
     strokeWeight: 6,
