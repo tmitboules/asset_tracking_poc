@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo } from "react";
+import React from "react";
 import { useJsApiLoader, Libraries } from "@react-google-maps/api";
 import { MAP_STARTING_CENTER } from "../utils/constants";
 
@@ -36,11 +36,11 @@ export default function useMap() {
   const [distance, setDistance] = React.useState("");
   const [duration, setDuration] = React.useState("");
 
-  const [count, setCount] = React.useState<number>(0);
+  const [count, setCount] = React.useState<number>(1);
 
   const [rotation, setRotation] = React.useState(90);
 
-  const [snappedPoints, setSnappedPoints] = React.useState<any[]>([
+  const [snappedPoints, setSnappedPoints] = React.useState<string[]>([
     "33.778119,-117.846784",
     "33.777807,-117.846766",
     "33.777807,-117.846766",
@@ -66,7 +66,9 @@ export default function useMap() {
     "33.875662,-117.635074",
     "33.871735,-117.634046",
   ]);
-  const [snappedCoordinates, setSnappedCoordinates] = React.useState<any[]>([]);
+  const [snappedCoordinates, setSnappedCoordinates] = React.useState<string[]>(
+    []
+  );
 
   async function getDirections() {
     if (!originRef.current || !destinationRef.current) return;
@@ -87,29 +89,28 @@ export default function useMap() {
       lng: results.routes[0].legs[0].end_location.lng(),
     });
     setDirections(results);
+
+    setInterval(() => {
+      setCount((s) => s + 1);
+    }, 5000);
   }
 
-  useEffect(() => {
-    if (count < snappedPoints.length) {
-      setTimeout(() => {
-        liveLocationChange();
-      }, 10000);
-      if (count % 3 === 0) {
-        setTimeout(() => {
-          if (snappedPoints.length > 0 && snappedPoints[count]) {
-            getUpdateDirections(snappedPoints[count]);
-          }
-        }, 30000);
-      }
+  function intervalRunner() {
+    console.log(count);
+    if (count % 3 == 0) {
+      getUpdateDirections(snappedPoints[count]);
+    } else {
+      liveLocationChange();
     }
+  }
+
+  React.useEffect(() => {
+    intervalRunner();
   }, [count]);
 
   function liveLocationChange() {
     if (snappedPoints.length > 0 && snappedPoints[count]) {
       updateMarker(snappedPoints[count]);
-    }
-    if (count < snappedPoints.length) {
-      setCount((prev) => prev + 1);
     }
   }
 
@@ -124,6 +125,10 @@ export default function useMap() {
     console.log("getUpdateDirections");
     setDistanceAndDuration(results);
     setDirections(results);
+    setOrigin({
+      lat: results.routes[0].legs[0].start_location.lat(),
+      lng: results.routes[0].legs[0].start_location.lng(),
+    });
     map?.setCenter(results.routes[0].bounds.getCenter());
 
     setSnappedCoordinates([]);

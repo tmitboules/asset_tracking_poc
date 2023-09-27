@@ -1,14 +1,18 @@
 import "./App.css";
 
 import {
-  CircleF,
   DirectionsRenderer,
   GoogleMap,
   MarkerF,
   PolylineF,
 } from "@react-google-maps/api";
-import useMap from "./hooks/useMap";
-import { CONTAINER_STYLE, MAP_STARTING_CENTER } from "./utils/constants";
+
+import useMapTakeTwo from "./hooks/useMapTakeTwo";
+import {
+  CONTAINER_STYLE,
+  DIRECTIONS_OPTIONS,
+  MAP_STARTING_CENTER,
+} from "./utils/constants";
 
 function App() {
   const {
@@ -17,24 +21,11 @@ function App() {
     onUnmount,
     originRef,
     destinationRef,
-    origin,
-    destination,
     getDirections,
-    snappedCoordinates,
-    directions,
-    distance,
-    duration,
-    rotation,
-    zoom,
-  } = useMap();
+    mapState,
+    dispatch,
+  } = useMapTakeTwo();
 
-  const directionsOptions = {
-    suppressMarkers: true,
-    polylineOptions: {
-      strokeColor: "#FF6C3E",
-      strokeWeight: 6,
-    },
-  };
   // const markerIcon = {
   //   url: "../src/assets/Navigation.svg",
   //   scaledSize: new google.maps.Size(32, 32),
@@ -59,53 +50,67 @@ function App() {
               placeholder="End Point"
             />
             <button onClick={getDirections}>Get Directions</button>
-            <label style={{ color: "white" }}>Distance : {distance}</label>
-            <label style={{ color: "white" }}> Duration : {duration}</label>
+            {/* <label style={{ color: "white" }}>Distance : {distance}</label>
+            <label style={{ color: "white" }}> Duration : {duration}</label> */}
           </div>
           <div className="map_container">
             <GoogleMap
-              center={origin ?? MAP_STARTING_CENTER}
+              center={MAP_STARTING_CENTER}
               onUnmount={onUnmount}
               onLoad={onLoad}
-              zoom={zoom}
               mapContainerStyle={CONTAINER_STYLE}
+              onClick={(e) => {
+                if (e.latLng) {
+                  dispatch({
+                    type: "update_truck_location",
+                    coordinates: e.latLng,
+                  });
+                }
+              }}
             >
-              {origin && (
+              {mapState.origin && (
                 <>
                   <MarkerF
                     icon={{
                       url: "../src/assets/Navigation.svg",
                       scaledSize: new google.maps.Size(32, 32),
                       anchor: new google.maps.Point(16, 16),
-                      rotation: rotation,
+                      rotation: 90,
                     }}
-                    position={origin}
+                    position={mapState.origin}
                   />
                 </>
               )}
-
-              {destination && (
+              {mapState.destination && (
                 <>
-                  <MarkerF position={destination} />
+                  <MarkerF position={mapState.destination} />
                 </>
               )}
-              {directions && (
-                <DirectionsRenderer
-                  options={directionsOptions}
-                  directions={directions}
-                />
+              {mapState.directions && (
+                <>
+                  <DirectionsRenderer
+                    options={DIRECTIONS_OPTIONS}
+                    directions={mapState.directions}
+                    onDirectionsChanged={() => {
+                      console.log("directions have changed");
+                    }}
+                  />
+                </>
               )}
-              {snappedCoordinates && (
-                <PolylineF
-                  path={snappedCoordinates}
-                  options={{
-                    strokeColor: "grey",
-                    strokeOpacity: 1,
-                    strokeWeight: 7,
-                    zIndex: 1000,
-                  }}
-                />
-              )}
+              /*{" "}
+              <>
+                {mapState.trailingPolyline && (
+                  <PolylineF
+                    path={mapState.trailingPolyline}
+                    options={{
+                      strokeColor: "grey",
+                      strokeOpacity: 1,
+                      strokeWeight: 7,
+                      zIndex: 1000,
+                    }}
+                  />
+                )}
+              </>
             </GoogleMap>
           </div>
         </div>
