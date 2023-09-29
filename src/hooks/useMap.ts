@@ -65,6 +65,10 @@ const reducer = (state: IMapReducerState, action: IMapReducerActions) => {
       return {
         ...state,
         count: state.count + 1,
+        trailingPolyline: generateTrailingPolyline(
+          state.directions!.routes[0].overview_path[state.count + 1],
+          state.directions!.routes[0].overview_path
+        ),
         origin: state.directions!.routes[0].overview_path[state.count + 1],
       } as IMapReducerState;
 
@@ -73,6 +77,24 @@ const reducer = (state: IMapReducerState, action: IMapReducerActions) => {
       state.directionsRenderer?.setMap(state.map);
 
       state.map?.fitBounds(action.directionsResult.routes[0].bounds);
+
+      new google.maps.Marker({
+        icon: {
+          // path: "M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z",
+          url: "../src/assets/Navigation.svg",
+          anchor: new google.maps.Point(16, 16),
+          rotation: 180,
+          scaledSize: new google.maps.Size(32, 32),
+          fillColor: "#FF6C3E",
+          fillOpacity: 1,
+          strokeColor: "#FF6C3E",
+        },
+        map: state.map,
+        position: {
+          lat: action.directionsResult.routes[0].legs[0].start_location.lat(),
+          lng: action.directionsResult.routes[0].legs[0].start_location.lng(),
+        },
+      });
 
       return {
         ...state,
@@ -130,18 +152,20 @@ const reducer = (state: IMapReducerState, action: IMapReducerActions) => {
         ),
         directions: action.directionsResult,
       } as IMapReducerState;
+
     case "update_current_angle":
       return {
         ...state,
         currentOriginAngle: action.angle,
       } as IMapReducerState;
+
     case "update_remaining_distance":
       return {
         ...state,
         remainingDistance: action.remainingDistance,
       } as IMapReducerState;
+
     case "update_directions_metadata": {
-      state.map?.fitBounds(action.directionsResult.routes[0].bounds);
       return {
         ...state,
         duration:
@@ -179,7 +203,7 @@ export default function useMap() {
     map: null,
     directionsRenderer: null,
   });
-  var interval: number;
+
   //functions
   async function getDirections() {
     if (!originRef.current || !destinationRef.current) return;
@@ -193,26 +217,21 @@ export default function useMap() {
     });
 
     dispatch({ type: "initialize_directions", directionsResult: results });
-    interval = setInterval(() => {
-      console.log("interval");
-      updateDirectionsMetaData();
-    }, 10000);
   }
 
-  async function updateDirectionsMetaData() {
-    console.log(mapState.origin);
-    if (!mapState.origin || !mapState.destination) return;
-    const directionsService = new google.maps.DirectionsService();
+  // async function updateDirectionsMetaData() {
+  //   console.log(mapState.origin);
+  //   if (!mapState.origin || !mapState.destination) return;
+  //   const directionsService = new google.maps.DirectionsService();
 
-    const results = await directionsService.route({
-      origin: mapState.origin,
-      destination: mapState.destination,
-      travelMode: google.maps.TravelMode.DRIVING,
-    });
-    console.log("updateDirectionsMetaData");
-    console.log({ results });
-    dispatch({ type: "update_directions_metadata", directionsResult: results });
-  }
+  //   const results = await directionsService.route({
+  //     origin: mapState.origin,
+  //     destination: mapState.destination,
+  //     travelMode: google.maps.TravelMode.DRIVING,
+  //   });
+
+  //   dispatch({ type: "update_directions_metadata", directionsResult: results });
+  // }
 
   async function updateTruckLocation(e: google.maps.MapMouseEvent) {
     if (!mapState.directions || !e.latLng) return;
@@ -263,8 +282,6 @@ export default function useMap() {
   }
 
   function computeRemainingDistance(newCoordinates: any, destination: any) {
-    console.log({ newCoordinates });
-    console.log({ destination });
     const remainingDistance =
       google.maps.geometry.spherical.computeDistanceBetween(
         destination,
@@ -277,14 +294,12 @@ export default function useMap() {
       remainingDistance: remainingDistance,
     });
     if (remainingDistance < 1) {
-      if (interval) clearInterval(interval);
+      // if (interval) clearInterval(interval);
     }
     return remainingDistance;
   }
 
   function calculateRotationAngle(newCoordinates: any, origin: any) {
-    console.log({ newCoordinates });
-    console.log({ origin });
     if (origin) {
       const prevLat = Number(origin?.lat);
       const prevLng = Number(origin?.lng);
@@ -293,7 +308,7 @@ export default function useMap() {
       const deltaY = newLat - prevLat;
       const deltaX = newLng - prevLng;
       const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
-      console.log({ angle });
+
       dispatch({
         type: "update_current_angle",
         angle: angle,

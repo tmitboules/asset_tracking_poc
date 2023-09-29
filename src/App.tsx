@@ -17,6 +17,8 @@ function App() {
     updateTruckLocation,
   } = useMap();
 
+  console.log(mapState.currentOriginAngle);
+
   return (
     <>
       {isLoaded ? (
@@ -53,34 +55,22 @@ function App() {
               mapContainerStyle={CONTAINER_STYLE}
               onClick={updateTruckLocation}
             >
-              {(mapState.origin || mapState.currentOriginAngle) && (
-                <>
-                  <MarkerF
-                    icon={{
-                      // url: "../src/assets/Navigation.svg",
-                      path: "M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z",
-                      anchor: new google.maps.Point(16, 16),
-                      rotation: mapState.currentOriginAngle ?? 0,
-                      scaledSize: new google.maps.Size(32, 32),
-                      fillColor: "#FF6C3E",
-                      fillOpacity: 1,
-                      strokeColor: "#FF6C3E",
-                    }}
-                    position={mapState.origin ?? MAP_STARTING_CENTER}
-                  />
-                  {/* <CircleF
-                    center={mapState.origin}
-                    radius={1}
-                    options={{
-                      strokeColor: "#FF6C3E",
-                      strokeOpacity: 1,
-                      strokeWeight: 5,
-                      fillColor: "#F9F9F9",
-                      fillOpacity: 1,
-                    }}
-                  /> */}
-                </>
-              )}
+              {/* {(mapState.origin || mapState.currentOriginAngle) && (
+                <MarkerF
+                  onPositionChanged={() => {}}
+                  icon={{
+                    // url: "../src/assets/Navigation.svg",
+                    path: "M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z",
+                    anchor: new google.maps.Point(16, 16),
+                    rotation: mapState.currentOriginAngle ?? 0,
+                    scaledSize: new google.maps.Size(32, 32),
+                    fillColor: "#FF6C3E",
+                    fillOpacity: 1,
+                    strokeColor: "#FF6C3E",
+                  }}
+                  position={mapState.origin ?? MAP_STARTING_CENTER}
+                />
+              )} */}
               {mapState.destination && (
                 <>
                   <MarkerF
@@ -91,17 +81,6 @@ function App() {
                     }}
                     position={mapState.destination}
                   />
-                  {/* <CircleF
-                    center={mapState.destination}
-                    radius={15} // Example circle radius in meters
-                    options={{
-                      strokeColor: "#FF6C3E",
-                      strokeOpacity: 0.1,
-                      strokeWeight: 5,
-                      fillColor: "#F9F9F9",
-                      fillOpacity: 1,
-                    }}
-                  /> */}
                 </>
               )}
 
